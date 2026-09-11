@@ -1,0 +1,11 @@
+node_modules
+dist
+data
+uploads/*
+!uploads/.gitkeep
+.env
+*.log
+.DS_Store
+/server/.env
+.trae/
+.codegraph/
