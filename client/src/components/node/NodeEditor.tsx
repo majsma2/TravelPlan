@@ -101,16 +101,17 @@ export default function NodeEditor() {
   return (
     <div
       className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
-      onClick={() => setEditingNode(null)}
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3 border-b sticky top-0 bg-white">
           <h3 className="font-bold text-gray-800">编辑节点</h3>
-          <button className="text-gray-400" onClick={() => setEditingNode(null)}>
-            ✕
+          <button
+            className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg"
+            onClick={() => setEditingNode(null)}
+          >
+            保存
           </button>
         </div>
         <div className="p-5 space-y-4">

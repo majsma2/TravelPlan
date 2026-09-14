@@ -12,7 +12,15 @@ import type {
   TripSummary,
 } from '../types/domain';
 
-const genId = () => crypto.randomUUID();
+// crypto.randomUUID 仅在安全上下文（HTTPS / localhost）可用，
+// Docker 部署经 IP + HTTP 访问时不可用，用 polyfill 兜底
+const genId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+      });
 
 // 本地缓存（离线查看已拉取的路线；按 token 隔离）
 function localKey(token: string) {
@@ -88,6 +96,7 @@ interface TripState {
   // 管理列表
   listTrips: () => Promise<void>;
   deleteTrip: (token: string) => Promise<void>;
+  copyTrip: (token: string) => Promise<void>;
   selectTrip: (token: string) => Promise<void>;
   backToList: () => void;
 
@@ -175,6 +184,19 @@ export const useTripStore = create<TripState>((set, get) => ({
       await get().listTrips();
     } catch {
       useUIStore.getState().pushToast('error', '删除失败');
+    }
+  },
+
+  copyTrip: async (token) => {
+    try {
+      const { data } = await apiClient.post(`/trip/${token}/copy`);
+      useUIStore.getState().pushToast('success', '行程已复制');
+      await get().listTrips();
+      // 复制完成后自动打开新行程
+      setToken(data.token);
+      await get().loadTrip(data.token);
+    } catch {
+      useUIStore.getState().pushToast('error', '复制失败');
     }
   },
 

@@ -109,6 +109,63 @@ router.post('/', (req, res) => {
   res.json({ id, token });
 });
 
+/** POST /api/trip/:token/copy — 复制行程（含全部天与节点），返回新 token */
+router.post('/:token/copy', tokenAuth, (req, res) => {
+  const payload = loadTrip(req.tripToken!);
+  if (!payload) {
+    res.status(404).json({ error: 'trip_not_found' });
+    return;
+  }
+  const db = getDb();
+  const now = new Date().toISOString();
+  const newId = crypto.randomUUID();
+  const newToken = crypto.randomBytes(16).toString('hex');
+
+  db.trips.push({
+    id: newId,
+    token: newToken,
+    title: `${payload.title} 的副本`,
+    route_preference: payload.route_preference,
+    auto_link: payload.auto_link,
+    start_date: payload.start_date,
+    created_at: now,
+    updated_at: now,
+  });
+
+  for (const day of payload.days) {
+    const newDayId = crypto.randomUUID();
+    db.days.push({
+      id: newDayId,
+      trip_id: newId,
+      date: day.date,
+      order: day.order,
+      departure_time: day.departure_time ?? null,
+    });
+    for (const n of day.nodes ?? []) {
+      db.nodes.push({
+        id: crypto.randomUUID(),
+        day_id: newDayId,
+        order: n.order,
+        type: n.type,
+        name: n.name,
+        address: n.address,
+        lng: n.lng,
+        lat: n.lat,
+        arrive_time: n.arrive_time,
+        leave_time: n.leave_time,
+        play_duration: n.play_duration,
+        note: n.note,
+        images: n.images ?? [],
+        manual_time: n.manual_time ?? 0,
+      });
+    }
+  }
+
+  persist();
+  logger.info('trip', `copied ${req.tripId} -> ${newId}`);
+  res.json({ id: newId, token: newToken });
+});
+
 /** GET /api/trip/:token — 拉取整条行程 */
 router.get('/:token', tokenAuth, (req, res) => {
   const payload = loadTrip(req.tripToken!);

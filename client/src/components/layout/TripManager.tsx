@@ -31,6 +31,7 @@ export default function TripManager() {
   const listLoading = useTripStore((s) => s.listLoading);
   const createTrip = useTripStore((s) => s.createTrip);
   const deleteTrip = useTripStore((s) => s.deleteTrip);
+  const copyTrip = useTripStore((s) => s.copyTrip);
   const selectTrip = useTripStore((s) => s.selectTrip);
   const listTrips = useTripStore((s) => s.listTrips);
   const pushToast = useUIStore((s) => s.pushToast);
@@ -126,6 +127,12 @@ export default function TripManager() {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
+                  <button
+                    className="text-sm text-gray-600 hover:bg-gray-100 border border-gray-300 px-3 py-1.5 rounded-lg"
+                    onClick={() => copyTrip(t.token)}
+                  >
+                    复制
+                  </button>
                   <button
                     className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg"
                     onClick={() => onEdit(t.token)}

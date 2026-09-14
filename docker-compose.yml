@@ -1,0 +1,21 @@
+services:
+  travelplan:
+    build: .
+    ports:
+      - "8787:8787"
+    environment:
+      # === 两个高德 Key（必须填写）===
+      AMAP_JS_KEY: "替换为你的JS API Key"
+      AMAP_JS_SECURITY: ""      # JS API 安全密钥（2021-12-02 后申请的 key 必须配）
+      # === 可选配置 ===
+      PORT: "8787"
+      DAILY_QUOTA: "2000"
+      DRIVING_TTL_DAYS: "7"
+    volumes:
+      - travelplan-data:/app/data
+      - travelplan-uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  travelplan-data:
+  travelplan-uploads:

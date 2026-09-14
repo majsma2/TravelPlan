@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fs from 'node:fs';
 import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
@@ -33,6 +34,15 @@ app.use('/api/upload', uploadRoutes);
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.use(errorHandler);
+
+// 生产环境：托管前端静态文件（Docker 部署时 client/dist → ../public）
+const publicDir = path.resolve(__dirname, '../public');
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.resolve(publicDir, 'index.html'));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`[server] running at http://localhost:${PORT}`);
