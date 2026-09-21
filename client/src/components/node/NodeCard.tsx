@@ -25,6 +25,7 @@ export default function NodeCard({
   const selectNode = useUIStore((s) => s.selectNode);
   const selected = useUIStore((s) => s.selectedNodeId === node.id);
   const deleteNode = useTripStore((s) => s.deleteNode);
+  const locked = useTripStore((s) => s.trip?.locked === 1);
 
   return (
     <div
@@ -35,14 +36,16 @@ export default function NodeCard({
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       <div className="flex items-start gap-2">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab text-gray-400 mt-0.5 select-none"
-          title="拖拽排序"
-        >
-          ⠿
-        </button>
+        {!locked && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab text-gray-400 mt-0.5 select-none"
+            title="拖拽排序"
+          >
+            ⠿
+          </button>
+        )}
         <div
           className="flex-1 cursor-pointer"
           onClick={() => {
@@ -63,13 +66,15 @@ export default function NodeCard({
             <div className="text-xs text-gray-400 mt-1 truncate">📝 {node.note}</div>
           )}
         </div>
-        <button
-          className="text-gray-300 hover:text-rose-500 text-sm px-1"
-          title="删除节点"
-          onClick={() => deleteNode(node.id)}
-        >
-          ✕
-        </button>
+        {!locked && (
+          <button
+            className="text-gray-300 hover:text-rose-500 text-sm px-1"
+            title="删除节点"
+            onClick={() => deleteNode(node.id)}
+          >
+            ✕
+          </button>
+        )}
       </div>
     </div>
   );

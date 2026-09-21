@@ -12,11 +12,13 @@ export default function TripBoard() {
   const snapshot = useTripStore((s) => getSnapshot(s));
   const moveNode = useTripStore((s) => s.moveNode);
   const addDay = useTripStore((s) => s.addDay);
+  const locked = useTripStore((s) => s.trip?.locked === 1);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
   const onDragEnd = (e: DragEndEvent) => {
+    if (locked) return;
     const { active, over } = e;
     if (!over) return;
     const a = active.data.current as { dayId: string; order: number } | undefined;
@@ -43,12 +45,14 @@ export default function TripBoard() {
           {snapshot.days.map((d, i) => (
             <DayColumn key={d.id} day={d} index={i} />
           ))}
-          <button
-            onClick={addDay}
-            className="bg-white border border-dashed border-blue-300 rounded-xl w-full p-3 text-blue-600 hover:bg-blue-50"
-          >
-            + 新增行程日
-          </button>
+          {!locked && (
+            <button
+              onClick={addDay}
+              className="bg-white border border-dashed border-blue-300 rounded-xl w-full p-3 text-blue-600 hover:bg-blue-50"
+            >
+              + 新增行程日
+            </button>
+          )}
         </div>
       </DndContext>
     </div>

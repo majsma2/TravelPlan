@@ -42,7 +42,7 @@ export default function DrivingSegmentRow({ prev, next }: Props) {
         ) : result ? (
           <span className="flex-1">
             {result.status === 'rest'
-              ? '原地休整'
+              ? '当地游览'
               : driveSummary(result.distance, result.duration)}
             {result.status === 'no_route' && (
               <span className="text-amber-600 ml-1">（无路网，参考值）</span>

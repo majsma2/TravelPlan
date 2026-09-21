@@ -32,6 +32,7 @@ export interface TripPayload {
   title: string;
   route_preference: number;
   auto_link: number;
+  locked: number; // 0/1 是否锁定
   start_date: string;
   days: DayData[];
 }

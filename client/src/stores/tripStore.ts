@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { apiClient, setToken } from '../services/apiClient';
 import { makeCacheKey } from '../utils/geo';
 import { computeDaySchedule, parseTimeToMin } from '../utils/timeChain';
+import { idbLoad, idbSave } from '../utils/idbCache';
 import { useUIStore } from './uiStore';
 import type {
   TripPayload,
@@ -22,14 +23,16 @@ const genId = () =>
         return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
       });
 
-// 本地缓存（离线查看已拉取的路线；按 token 隔离）
+type CacheShape = {
+  driving: Record<string, DrivingResponse>;
+  manual: Record<string, { distance: number; duration: number }>;
+};
+
+// 持久化层：IndexedDB 为主，localStorage 作为兜底（IDB 不可用时降级）
 function localKey(token: string) {
   return `tp_cache_${token}`;
 }
-function loadLocal(token: string): {
-  driving: Record<string, DrivingResponse>;
-  manual: Record<string, { distance: number; duration: number }>;
-} {
+function loadLocalFallback(token: string): CacheShape {
   try {
     const raw = localStorage.getItem(localKey(token));
     if (!raw) return { driving: {}, manual: {} };
@@ -38,16 +41,69 @@ function loadLocal(token: string): {
     return { driving: {}, manual: {} };
   }
 }
-function saveLocal(
+function saveLocalFallback(
   token: string,
   driving: Record<string, DrivingResponse>,
   manual: Record<string, { distance: number; duration: number }>
 ) {
+  const payload = JSON.stringify({ driving, manual });
   try {
-    localStorage.setItem(localKey(token), JSON.stringify({ driving, manual }));
+    localStorage.setItem(localKey(token), payload);
   } catch {
-    /* 配额满忽略 */
+    // 配额溢出：清理其他 token 的缓存后重试一次
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('tp_cache_') && k !== localKey(token)) {
+        localStorage.removeItem(k);
+      }
+    }
+    try {
+      localStorage.setItem(localKey(token), payload);
+    } catch {
+      // 仍失败：放弃持久化（不影响本次会话内的使用）
+    }
   }
+}
+
+// IDB 是否可用（HTTP + IP 部署下可能被某些浏览器限制）
+let idbAvailable = typeof indexedDB !== 'undefined';
+// 启动时探测一次，失败则降级到 localStorage
+void openDBProbe().then((ok) => (idbAvailable = ok));
+async function openDBProbe(): Promise<boolean> {
+  try {
+    // 触发实际打开，验证是否能写入空记录
+    await idbSave('__probe__', {}, {});
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 读缓存：优先 IDB，失败/不可用回退 localStorage */
+async function loadCache(token: string): Promise<CacheShape> {
+  if (idbAvailable) {
+    const res = await idbLoad(token);
+    if (res.driving || res.manual) return res;
+    // IDB 没数据时回落 localStorage 一次，兼容历史数据
+    const fallback = loadLocalFallback(token);
+    if (fallback.driving || fallback.manual) return fallback;
+    return { driving: {}, manual: {} };
+  }
+  return loadLocalFallback(token);
+}
+
+/** 写缓存：IDB 可用走 IDB，否则走 localStorage 兜底 */
+function saveCache(
+  token: string,
+  driving: Record<string, DrivingResponse>,
+  manual: Record<string, { distance: number; duration: number }>
+) {
+  if (idbAvailable) {
+    // fire-and-forget，不阻塞 UI
+    void idbSave(token, driving, manual);
+    return;
+  }
+  saveLocalFallback(token, driving, manual);
 }
 
 /** 给 yyyy-MM-dd 加 n 天，返回 yyyy-MM-dd（用本地时区，避免 UTC 偏移导致少一天） */
@@ -104,7 +160,9 @@ interface TripState {
   setTitle: (title: string) => void;
   setRoutePreference: (pref: number) => void;
   toggleAutoLink: () => void;
+  toggleLock: () => void;
   setStartDate: (date: string) => void;
+  recalcAllTimes: () => void;
 
   // 日
   addDay: () => void;
@@ -222,7 +280,7 @@ export const useTripStore = create<TripState>((set, get) => ({
     set({ status: 'loading', view: 'edit' });
     try {
       const { data } = await apiClient.get<TripPayload>(`/trip/${token}`);
-      const cached = loadLocal(token);
+      const cached = await loadCache(token);
       set({
         trip: data,
         token,
@@ -282,6 +340,16 @@ export const useTripStore = create<TripState>((set, get) => ({
     });
   },
 
+  toggleLock: () => {
+    const t = get().trip;
+    if (!t) return;
+    set({
+      trip: { ...t, locked: t.locked ? 0 : 1 },
+      dirty: true,
+      saveState: 'idle',
+    });
+  },
+
   setStartDate: (date) => {
     const t = get().trip;
     if (!t) return;
@@ -292,6 +360,24 @@ export const useTripStore = create<TripState>((set, get) => ({
       dirty: true,
       saveState: 'idle',
     });
+  },
+
+  recalcAllTimes: () => {
+    const t = get().trip;
+    if (!t) return;
+    // 清空高德驾驶缓存，保留用户手动覆盖（manualSegments）。
+    // trip 引用变化触发 useDebouncedDriving 防抖重算；
+    // changedDayId/changedNodeId 置空使 collectNeeded 走全量收集分支。
+    set({
+      trip: { ...t },
+      driving: {},
+      changedDayId: null,
+      changedNodeId: null,
+      changedFromDayId: null,
+      dirty: true,
+      saveState: 'idle',
+    });
+    useUIStore.getState().pushToast('info', '正在重新计算所有节点时间');
   },
 
   addDay: () => {
@@ -490,14 +576,14 @@ export const useTripStore = create<TripState>((set, get) => ({
   setDriving: (key, res) =>
     set((s) => {
       const driving = { ...s.driving, [key]: res };
-      if (s.token) saveLocal(s.token, driving, s.manualSegments);
+      if (s.token) saveCache(s.token, driving, s.manualSegments);
       return { driving };
     }),
 
   setManualSegment: (key, val) =>
     set((s) => {
       const manualSegments = { ...s.manualSegments, [key]: val };
-      if (s.token) saveLocal(s.token, s.driving, manualSegments);
+      if (s.token) saveCache(s.token, s.driving, manualSegments);
       return { manualSegments };
     }),
 
@@ -505,7 +591,7 @@ export const useTripStore = create<TripState>((set, get) => ({
     const s = get();
     const next = { ...s.manualSegments };
     delete next[key];
-    if (s.token) saveLocal(s.token, s.driving, next);
+    if (s.token) saveCache(s.token, s.driving, next);
     set({ manualSegments: next });
   },
 }));

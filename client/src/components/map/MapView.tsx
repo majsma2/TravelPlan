@@ -102,7 +102,6 @@ export default function MapView() {
               strokeColor: color,
               strokeWeight: 4,
               strokeOpacity: 0.85,
-              strokeStyle: 'dashed',
               lineJoin: 'round',
             });
             map.add(poly);

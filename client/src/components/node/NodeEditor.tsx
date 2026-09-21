@@ -21,6 +21,7 @@ export default function NodeEditor() {
   const pushToast = useUIStore((s) => s.pushToast);
   const trip = useTripStore((s) => s.trip);
   const autoLink = useTripStore((s) => s.trip?.auto_link === 1);
+  const locked = useTripStore((s) => s.trip?.locked === 1);
   const updateNode = useTripStore((s) => s.updateNode);
 
   const found = findNode(trip, editingNodeId);
@@ -118,10 +119,11 @@ export default function NodeEditor() {
           <div>
             <label className="text-xs text-gray-500">名称</label>
             <input
-              className="w-full border rounded-lg px-3 py-2 mt-1"
+              className="w-full border rounded-lg px-3 py-2 mt-1 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               value={node.name}
               onChange={(e) => updateNodeLocal({ name: e.target.value })}
               placeholder="节点名称"
+              disabled={locked}
             />
           </div>
 
@@ -130,10 +132,11 @@ export default function NodeEditor() {
               地址（输入关键字搜索高德 POI）
             </label>
             <input
-              className="w-full border rounded-lg px-3 py-2 mt-1"
+              className="w-full border rounded-lg px-3 py-2 mt-1 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               value={addr}
               onChange={(e) => onAddrInput(e.target.value)}
               placeholder="如：宽窄巷子"
+              disabled={locked}
             />
             {searching && (
               <div className="text-xs text-gray-400 mt-1">搜索中…</div>
@@ -161,9 +164,10 @@ export default function NodeEditor() {
             <div>
               <label className="text-xs text-gray-500">类型</label>
               <select
-                className="w-full border rounded-lg px-3 py-2 mt-1"
+                className="w-full border rounded-lg px-3 py-2 mt-1 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 value={node.type}
                 onChange={(e) => updateNodeLocal({ type: e.target.value as NodeType })}
+                disabled={locked}
               >
                 {Object.entries(NODE_TYPE_LABELS).map(([k, v]) => {
                   const disabled = k === 'hotel' && dayHasOtherHotel;
@@ -180,11 +184,12 @@ export default function NodeEditor() {
               <label className="text-xs text-gray-500">游玩时长(分钟)</label>
               <input
                 type="number"
-                className="w-full border rounded-lg px-3 py-2 mt-1"
+                className="w-full border rounded-lg px-3 py-2 mt-1 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 value={node.play_duration}
                 onChange={(e) =>
                   updateNodeLocal({ play_duration: Math.max(0, parseInt(e.target.value) || 0) })
                 }
+                disabled={locked}
               />
             </div>
           </div>
@@ -199,9 +204,9 @@ export default function NodeEditor() {
               </label>
               <input
                 type="time"
-                className="w-full border rounded-lg px-3 py-2 mt-1"
+                className="w-full border rounded-lg px-3 py-2 mt-1 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 value={node.arrive_time ?? ''}
-                disabled={autoLink && !isFirst}
+                disabled={locked || (autoLink && !isFirst)}
                 onChange={(e) =>
                   updateNodeLocal({ arrive_time: e.target.value, manual_time: 1 })
                 }
@@ -214,9 +219,9 @@ export default function NodeEditor() {
               </label>
               <input
                 type="time"
-                className="w-full border rounded-lg px-3 py-2 mt-1"
+                className="w-full border rounded-lg px-3 py-2 mt-1 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 value={node.leave_time ?? ''}
-                disabled={autoLink}
+                disabled={locked || autoLink}
                 onChange={(e) =>
                   updateNodeLocal({ leave_time: e.target.value, manual_time: 1 })
                 }
@@ -227,10 +232,11 @@ export default function NodeEditor() {
           <div>
             <label className="text-xs text-gray-500">备注</label>
             <textarea
-              className="w-full border rounded-lg px-3 py-2 mt-1"
+              className="w-full border rounded-lg px-3 py-2 mt-1 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               rows={2}
               value={node.note}
               onChange={(e) => updateNodeLocal({ note: e.target.value })}
+              disabled={locked}
             />
           </div>
 
@@ -245,7 +251,8 @@ export default function NodeEditor() {
                   className="w-16 h-16 object-cover rounded border"
                 />
               ))}
-              <label className="w-16 h-16 flex items-center justify-center border-2 border-dashed rounded cursor-pointer text-gray-400 hover:border-blue-400">
+              {!locked && (
+                <label className="w-16 h-16 flex items-center justify-center border-2 border-dashed rounded cursor-pointer text-gray-400 hover:border-blue-400">
                 +
                 <input
                   type="file"
@@ -256,7 +263,8 @@ export default function NodeEditor() {
                     if (f) onUploadImage(f);
                   }}
                 />
-              </label>
+                </label>
+              )}
             </div>
           </div>
         </div>

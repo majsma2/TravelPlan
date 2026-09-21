@@ -13,6 +13,7 @@ export interface TripRow {
   route_preference: number;
   auto_link: number;
   start_date: string;
+  locked: number; // 0/1 是否锁定
   created_at: string;
   updated_at: string;
 }

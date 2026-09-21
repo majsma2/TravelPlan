@@ -38,6 +38,7 @@ function loadTrip(token: string): TripPayload | null {
     route_preference: trip.route_preference,
     auto_link: trip.auto_link,
     start_date: trip.start_date,
+    locked: trip.locked ?? 0,
     days: daysPayload,
   };
 }
@@ -100,6 +101,7 @@ router.post('/', (req, res) => {
     route_preference: 32,
     auto_link: 1,
     start_date: now.slice(0, 10),
+    locked: 0,
     created_at: now,
     updated_at: now,
   };
@@ -128,6 +130,7 @@ router.post('/:token/copy', tokenAuth, (req, res) => {
     route_preference: payload.route_preference,
     auto_link: payload.auto_link,
     start_date: payload.start_date,
+    locked: 0,
     created_at: now,
     updated_at: now,
   });
@@ -192,6 +195,7 @@ router.put('/:token', tokenAuth, (req, res) => {
   trip.route_preference = payload.route_preference ?? trip.route_preference;
   trip.auto_link = payload.auto_link ?? trip.auto_link;
   trip.start_date = payload.start_date ?? trip.start_date;
+  trip.locked = payload.locked ?? trip.locked ?? 0;
   trip.updated_at = now;
 
   // 全量重建：先删旧 days（及其节点），再插新

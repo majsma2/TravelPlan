@@ -4,6 +4,7 @@ import { ROUTE_PREFERENCES } from '../../types/domain';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useDebouncedDriving } from '../../hooks/useDebouncedDriving';
 import { useFatigueReminder } from '../../hooks/useFatigueReminder';
+import { exportTripImage } from '../../utils/exportTripImage';
 import TripBoard from './TripBoard';
 import MapView from '../map/MapView';
 
@@ -12,6 +13,8 @@ export default function AppShell() {
   const setTitle = useTripStore((s) => s.setTitle);
   const setRoutePreference = useTripStore((s) => s.setRoutePreference);
   const toggleAutoLink = useTripStore((s) => s.toggleAutoLink);
+  const toggleLock = useTripStore((s) => s.toggleLock);
+  const recalcAllTimes = useTripStore((s) => s.recalcAllTimes);
   const setStartDate = useTripStore((s) => s.setStartDate);
   const saveState = useTripStore((s) => s.saveState);
   const backToList = useTripStore((s) => s.backToList);
@@ -46,6 +49,8 @@ export default function AppShell() {
     };
   }, [onMouseMove, onMouseUp]);
 
+  const locked = trip?.locked === 1;
+
   const saveLabel =
     saveState === 'saving'
       ? '保存中…'
@@ -70,13 +75,14 @@ export default function AppShell() {
           value={trip?.title ?? ''}
           onChange={(e) => setTitle(e.target.value)}
         />
-        <label className="text-sm text-gray-500 flex items-center gap-1">
+        <label className={`text-sm flex items-center gap-1 ${locked ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500'}`}>
           开始日期
           <input
             type="date"
-            className="border rounded px-2 py-1 text-sm"
+            className="border rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
             value={trip?.start_date ?? ''}
             onChange={(e) => setStartDate(e.target.value)}
+            disabled={locked}
           />
         </label>
         <label className="text-sm text-gray-500">路线偏好</label>
@@ -99,6 +105,35 @@ export default function AppShell() {
           />
           时序自动顺延
         </label>
+        <button
+          className={`text-sm px-3 py-1 rounded-lg font-medium ${
+            locked
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
+          }`}
+          onClick={recalcAllTimes}
+          disabled={locked}
+          title="清空驾驶缓存并重新拉取所有节点路线"
+        >
+          ⟳ 重算行程时间
+        </button>
+        <button
+          className={`text-sm px-3 py-1 rounded-lg font-medium ${
+            locked
+              ? 'bg-amber-500 hover:bg-amber-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+          }`}
+          onClick={toggleLock}
+        >
+          {locked ? '🔒 解锁' : '🔒 锁定行程'}
+        </button>
+        <button
+          className="text-sm px-3 py-1 rounded-lg font-medium bg-green-50 hover:bg-green-100 text-green-600"
+          onClick={exportTripImage}
+          title="导出每日行程摘要为图片"
+        >
+          📷 导出
+        </button>
         <span className="text-xs text-gray-400 ml-auto">{saveLabel}</span>
       </header>
       <div ref={containerRef} className="flex-1 flex overflow-hidden">

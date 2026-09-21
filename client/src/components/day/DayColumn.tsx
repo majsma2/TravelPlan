@@ -16,6 +16,7 @@ export default function DayColumn({ day, index }: { day: DayData; index: number 
   const clearDay = useTripStore((s) => s.clearDay);
   const deleteDay = useTripStore((s) => s.deleteDay);
   const setDayDepartureTime = useTripStore((s) => s.setDayDepartureTime);
+  const locked = useTripStore((s) => s.trip?.locked === 1);
   const totals = useTripStore((s) => selectDayTotals(s, day.id));
   const prevHotel = useTripStore((s) => selectPrevDayHotel(s, day.id));
   const { setNodeRef, isOver } = useDroppable({ id: `day:${day.id}` });
@@ -34,24 +35,28 @@ export default function DayColumn({ day, index }: { day: DayData; index: number 
           <span className="font-bold text-gray-500 whitespace-nowrap">{day.date}</span>
         </div>
         <div className="flex gap-2 text-sm shrink-0">
-          <button
-            className="text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded px-2 py-0.5"
-            onClick={() => copyDay(day.id)}
-          >
-            复制
-          </button>
-          <button
-            className="text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded px-2 py-0.5"
-            onClick={() => clearDay(day.id)}
-          >
-            清空
-          </button>
-          <button
-            className="text-gray-500 hover:text-rose-600 hover:bg-rose-50 rounded px-2 py-0.5"
-            onClick={() => deleteDay(day.id)}
-          >
-            删除
-          </button>
+          {!locked && (
+            <>
+              <button
+                className="text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded px-2 py-0.5"
+                onClick={() => copyDay(day.id)}
+              >
+                复制
+              </button>
+              <button
+                className="text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded px-2 py-0.5"
+                onClick={() => clearDay(day.id)}
+              >
+                清空
+              </button>
+              <button
+                className="text-gray-500 hover:text-rose-600 hover:bg-rose-50 rounded px-2 py-0.5"
+                onClick={() => deleteDay(day.id)}
+              >
+                删除
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -126,12 +131,14 @@ export default function DayColumn({ day, index }: { day: DayData; index: number 
         </div>
       </SortableContext>
 
-      <button
-        className="w-full mt-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg py-2 border border-dashed border-blue-300"
-        onClick={() => addNode(day.id)}
-      >
-        + 添加节点
-      </button>
+      {!locked && (
+        <button
+          className="w-full mt-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg py-2 border border-dashed border-blue-300"
+          onClick={() => addNode(day.id)}
+        >
+          + 添加节点
+        </button>
+      )}
     </div>
   );
 }
